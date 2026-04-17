@@ -100,6 +100,10 @@ function M.format(zone)
   return lines
 end
 
+-- Previous nvim-notify handle, when that backend is active. snacks.nvim
+-- doesn't use the return value; it dedupes via the `id` option instead.
+local last_handle = nil
+
 ---Fire the card as a `vim.notify` message. Routes through whichever
 ---notifier the user has (nvim-notify / snacks.nvim / default).
 ---@param opts table|nil -- { zone = "Kitchen" }
@@ -111,12 +115,22 @@ function M.show(opts)
     return
   end
   local body = table.concat(M.format(z), "\n")
-  vim.notify(body, vim.log.levels.INFO, {
+  local notify_opts = {
     title = "Roon — " .. z.display_name,
     timeout = config.options.card.timeout,
+    -- snacks.nvim deduplicates by this id; nvim-notify ignores it.
     id = "roon-nvim-card",
-    replace = "roon-nvim-card",
-  })
+  }
+  -- nvim-notify expects `replace` to be the HANDLE from a previous notify
+  -- call (not a string). Passing the raw id as replace errors. Only set
+  -- it when we actually have a handle from the last call.
+  if last_handle ~= nil and type(last_handle) ~= "string" then
+    notify_opts.replace = last_handle
+  end
+  local ok, result = pcall(vim.notify, body, vim.log.levels.INFO, notify_opts)
+  if ok then
+    last_handle = result
+  end
 end
 
 ---Watch the state store for *track* changes (title transitions) and
