@@ -56,8 +56,11 @@ end
 
 local function on_exit(code, stderr_tail)
   handle = nil
-  state.reset()
-  throttled_redraw()
+  -- Intentionally NOT calling state.reset() here. A reconnect cycle
+  -- would otherwise flash the widget to "waiting for Roon Core…"
+  -- between every disconnect and the next `initial` snapshot. The new
+  -- snapshot overwrites the store atomically when it arrives, so the
+  -- stale data in the gap is fine and invisible.
   if not should_run then
     return
   end
