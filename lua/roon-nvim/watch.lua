@@ -9,7 +9,15 @@ local should_run = false
 local backoff_s = nil
 
 local THROTTLE_MS = 250
+local HEALTHY_THRESHOLD_MS = 15000
+local FAIL_NOTIFY_THRESHOLD = 3
+
 local last_autocmd_fire = 0
+local started_at_ms = 0
+-- Count of consecutive restarts — only surface a notification once the
+-- reconnect loop fails to settle, so transient Roon Core hiccups don't
+-- spam the user every time the process cycles at startup.
+local consecutive_failures = 0
 
 ---Schedule a throttled `User RoonNvimState` autocmd so heirline and any
 ---other subscribers redraw. `vim.schedule` because the jobstart callbacks
@@ -26,6 +34,11 @@ local function throttled_redraw()
 end
 
 local function on_line(ev)
+  -- A connection that's survived HEALTHY_THRESHOLD_MS is "healthy" — clear
+  -- the failure counter so a later single blip doesn't cross the warn bar.
+  if consecutive_failures > 0 and (vim.uv.now() - started_at_ms) > HEALTHY_THRESHOLD_MS then
+    consecutive_failures = 0
+  end
   state.apply_event(ev)
   throttled_redraw()
 end
@@ -47,13 +60,25 @@ local function on_exit(code)
   handle = nil
   state.reset()
   throttled_redraw()
-  if should_run then
-    vim.notify(
-      string.format("roon watch exited (%d); restarting", code),
-      code == 0 and vim.log.levels.INFO or vim.log.levels.WARN
-    )
-    schedule_restart()
+  if not should_run then
+    return
   end
+  consecutive_failures = consecutive_failures + 1
+  if code ~= 0 then
+    vim.notify(
+      string.format("roon watch exited with error (%d); restarting", code),
+      vim.log.levels.WARN
+    )
+  elseif consecutive_failures >= FAIL_NOTIFY_THRESHOLD then
+    vim.notify(
+      string.format(
+        "roon watch keeps disconnecting (%d restarts); check Roon Core",
+        consecutive_failures
+      ),
+      vim.log.levels.WARN
+    )
+  end
+  schedule_restart()
 end
 
 function M.start()
@@ -61,6 +86,7 @@ function M.start()
     return
   end
   should_run = true
+  started_at_ms = vim.uv.now()
   local seek = tostring(config.options.watch.seek_hz or 1.0)
   handle = cli.stream({ "watch", "--seek-hz", seek }, on_line, on_exit)
   -- Reset backoff on successful start; on_exit re-applies if the process dies.
