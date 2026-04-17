@@ -77,13 +77,19 @@ end
 
 ---Start a long-running job whose stdout is NDJSON.
 ---Returns a handle { stop = fn, is_alive = fn }. `on_line(parsed)` fires per
----decoded JSON object; malformed lines are skipped silently.
+---decoded JSON object; malformed lines are skipped silently. Stderr is
+---collected into a bounded tail and handed to `on_exit` — it is NEVER
+---surfaced as its own notification, since roon-cli's tracing writes warn!
+---lines there during normal operation (empty frame hints, reconnects) and
+---we do not want them promoted to user-visible toasts.
 ---@param args string[]
 ---@param on_line fun(parsed: table)
----@param on_exit fun(code: integer)|nil
+---@param on_exit fun(code: integer, stderr_tail: string)|nil
 ---@return table handle
 function M.stream(args, on_line, on_exit)
   local buf = ""
+  local err_buf = {}
+  local ERR_TAIL_LINES = 20
   local alive = true
 
   local function flush(data)
@@ -107,26 +113,34 @@ function M.stream(args, on_line, on_exit)
     end
   end
 
+  local function capture_stderr(data)
+    if not data then
+      return
+    end
+    for _, line in ipairs(data) do
+      if line ~= "" then
+        table.insert(err_buf, line)
+        if #err_buf > ERR_TAIL_LINES then
+          table.remove(err_buf, 1)
+        end
+      end
+    end
+  end
+
   local job = vim.fn.jobstart(argv(args), {
     stdout_buffered = false,
     on_stdout = function(_, data)
       flush(data)
     end,
     on_stderr = function(_, data)
-      if data and #data > 0 then
-        local joined = table.concat(data, "\n")
-        if joined ~= "" then
-          vim.schedule(function()
-            vim.notify("roon-nvim: " .. joined, vim.log.levels.WARN)
-          end)
-        end
-      end
+      capture_stderr(data)
     end,
     on_exit = function(_, code)
       alive = false
       if on_exit then
+        local tail = table.concat(err_buf, "\n")
         vim.schedule(function()
-          on_exit(code)
+          on_exit(code, tail)
         end)
       end
     end,

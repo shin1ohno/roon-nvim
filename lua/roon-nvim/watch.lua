@@ -56,7 +56,7 @@ local function schedule_restart()
   end, backoff_s * 1000)
 end
 
-local function on_exit(code)
+local function on_exit(code, stderr_tail)
   handle = nil
   state.reset()
   throttled_redraw()
@@ -64,16 +64,18 @@ local function on_exit(code)
     return
   end
   consecutive_failures = consecutive_failures + 1
+  local tail = stderr_tail and stderr_tail ~= "" and ("\n" .. stderr_tail) or ""
   if code ~= 0 then
     vim.notify(
-      string.format("roon watch exited with error (%d); restarting", code),
+      string.format("roon watch exited with error (%d); restarting%s", code, tail),
       vim.log.levels.WARN
     )
   elseif consecutive_failures >= FAIL_NOTIFY_THRESHOLD then
     vim.notify(
       string.format(
-        "roon watch keeps disconnecting (%d restarts); check Roon Core",
-        consecutive_failures
+        "roon watch keeps disconnecting (%d restarts); check Roon Core%s",
+        consecutive_failures,
+        tail
       ),
       vim.log.levels.WARN
     )
