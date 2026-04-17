@@ -10,13 +10,11 @@ local backoff_s = nil
 
 local THROTTLE_MS = 250
 local HEALTHY_THRESHOLD_MS = 15000
-local FAIL_NOTIFY_THRESHOLD = 3
 
 local last_autocmd_fire = 0
 local started_at_ms = 0
--- Count of consecutive restarts — only surface a notification once the
--- reconnect loop fails to settle, so transient Roon Core hiccups don't
--- spam the user every time the process cycles at startup.
+-- Tracked for audit via :RoonLog / is_running(); not surfaced as a
+-- notification on its own.
 local consecutive_failures = 0
 
 ---Schedule a throttled `User RoonNvimState` autocmd so heirline and any
@@ -64,19 +62,15 @@ local function on_exit(code, stderr_tail)
     return
   end
   consecutive_failures = consecutive_failures + 1
-  local tail = stderr_tail and stderr_tail ~= "" and ("\n" .. stderr_tail) or ""
+  -- Clean exits are part of normal operation (Roon Core tears down idle
+  -- subscriptions roughly every few seconds on some Core versions).
+  -- They are silent; :RoonLog still records the restart count for when
+  -- the user wants to audit, and consecutive_failures is reset once the
+  -- connection stays alive past HEALTHY_THRESHOLD_MS.
   if code ~= 0 then
+    local tail = stderr_tail and stderr_tail ~= "" and ("\n" .. stderr_tail) or ""
     vim.notify(
-      string.format("roon watch exited with error (%d); restarting%s", code, tail),
-      vim.log.levels.WARN
-    )
-  elseif consecutive_failures >= FAIL_NOTIFY_THRESHOLD then
-    vim.notify(
-      string.format(
-        "roon watch keeps disconnecting (%d restarts); check Roon Core%s",
-        consecutive_failures,
-        tail
-      ),
+      string.format("roon watch exited with error (%d)%s", code, tail),
       vim.log.levels.WARN
     )
   end
