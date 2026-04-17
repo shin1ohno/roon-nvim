@@ -1,3 +1,4 @@
+local cli = require("roon-nvim.cli")
 local config = require("roon-nvim.config")
 local state = require("roon-nvim.state")
 
@@ -104,12 +105,41 @@ end
 -- doesn't use the return value; it dedupes via the `id` option instead.
 local last_handle = nil
 
+---Synchronous fallback when the watch snapshot isn't populated yet —
+---fetch zones one-shot via the CLI and pick the target.
+---@param preferred string|nil
+---@return table|nil
+local function fetch_primary_zone_sync(preferred)
+  local ok, zones = cli.oneshot_sync({ "zones", "--json" })
+  if not ok or type(zones) ~= "table" then
+    return nil
+  end
+  local any, first_playing
+  for _, z in ipairs(zones) do
+    any = any or z
+    if z.state == "playing" and not first_playing then
+      first_playing = z
+    end
+    if preferred and z.display_name == preferred then
+      return z
+    end
+  end
+  return first_playing or any
+end
+
 ---Fire the card as a `vim.notify` message. Routes through whichever
 ---notifier the user has (nvim-notify / snacks.nvim / default).
 ---@param opts table|nil -- { zone = "Kitchen" }
 function M.show(opts)
   opts = opts or {}
-  local z = state.primary_zone(opts.zone or config.options.zone)
+  local preferred = opts.zone or config.options.zone
+  local z = state.primary_zone(preferred)
+  if not z then
+    -- Watch hasn't delivered a snapshot yet (just started, reconnecting,
+    -- or Core was unreachable). Synchronously ask the CLI — this gives
+    -- the user something to look at without having to wait.
+    z = fetch_primary_zone_sync(preferred)
+  end
   if not z then
     vim.notify("roon: no zone to show", vim.log.levels.WARN, { title = "Roon" })
     return
