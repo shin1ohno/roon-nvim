@@ -119,6 +119,30 @@ require("telescope").load_extension("roon")
 | `<C-q>` | queue       |
 | `<C-r>` | start-radio |
 
+#### Playback controls (zone-wide)
+
+`setup{}` registers these user commands, targeting the configured `zone`:
+
+| command          | effect                                    |
+| ---------------- | ----------------------------------------- |
+| `:RoonPlay`      | resume                                    |
+| `:RoonPause`     | pause                                     |
+| `:RoonStop`      | stop                                      |
+| `:RoonNext`      | next track                                |
+| `:RoonPrevious`  | previous track                            |
+| `:RoonPlayPause` | toggle — reads current state from `watch` |
+
+Bind them however you like. Example Lazy `keys`:
+
+```lua
+keys = {
+  { "<leader>mp", "<cmd>RoonPlayPause<cr>", desc = "Roon play/pause" },
+  { "<leader>mn", "<cmd>RoonNext<cr>",      desc = "Roon next" },
+  { "<leader>mb", "<cmd>RoonPrevious<cr>",  desc = "Roon previous" },
+  { "<leader>ms", "<cmd>RoonStop<cr>",      desc = "Roon stop" },
+},
+```
+
 ## Local development
 
 During iteration, point Lazy at the local checkout:

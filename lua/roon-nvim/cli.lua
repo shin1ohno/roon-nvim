@@ -41,6 +41,20 @@ function M.oneshot_sync(args)
   return true, parsed, nil
 end
 
+---Fire-and-forget CLI invocation whose stdout is NOT JSON (e.g. play, pause,
+---next, previous). Only reports failures via vim.notify.
+---@param args string[]
+function M.exec_async(args)
+  vim.system(argv(args), { text = true }, function(result)
+    if result.code ~= 0 then
+      local err = (result.stderr ~= "" and result.stderr) or ("exit " .. tostring(result.code))
+      vim.schedule(function()
+        vim.notify("roon " .. (args[1] or "?") .. " failed: " .. err, vim.log.levels.ERROR)
+      end)
+    end
+  end)
+end
+
 ---Async one-shot. Callback runs on main loop via vim.schedule.
 ---@param args string[]
 ---@param cb fun(ok: boolean, parsed: table|nil, err: string|nil)
