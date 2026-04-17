@@ -26,7 +26,21 @@ end
 local function register_commands()
   local control = require("roon-nvim.control")
   local card = require("roon-nvim.card")
+  local widget = require("roon-nvim.widget")
   local log = require("roon-nvim.log")
+  local config = require("roon-nvim.config")
+
+  -- `:RoonStatus` adapts to the configured card mode: pinned ⇒ toggle
+  -- the floating widget; toast ⇒ fire a one-shot notification; off ⇒ no-op.
+  local function status()
+    local mode = config.options.card.mode
+    if mode == "pinned" then
+      widget.toggle()
+    elseif mode == "toast" then
+      card.show()
+    end
+  end
+
   local defs = {
     RoonPlay = control.play,
     RoonPause = control.pause,
@@ -34,7 +48,10 @@ local function register_commands()
     RoonNext = control.next,
     RoonPrevious = control.previous,
     RoonPlayPause = control.play_pause,
-    RoonStatus = function()
+    RoonStatus = status,
+    RoonShow = widget.open,
+    RoonHide = widget.close,
+    RoonToast = function()
       card.show()
     end,
     RoonLog = log.show,
@@ -51,8 +68,16 @@ function M.setup(opts)
   install_notify_proxy()
   register_commands()
   require("roon-nvim.card").enable_track_watcher()
+  require("roon-nvim.widget").setup_autos()
   if require("roon-nvim.config").options.watch.auto_start then
     require("roon-nvim.watch").start()
+  end
+  -- Pinned mode auto-opens the widget so the user sees the card without
+  -- having to invoke any command. Toast / off modes stay silent.
+  if require("roon-nvim.config").options.card.mode == "pinned" then
+    vim.defer_fn(function()
+      require("roon-nvim.widget").open()
+    end, 500)
   end
 end
 

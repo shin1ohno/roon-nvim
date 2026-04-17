@@ -22,13 +22,21 @@ M.defaults = {
     neotree = "nvim-neotree",
     telescope = "nvim-telescope",
   },
-  -- Rich "Now Playing" card shown via vim.notify (routes through
-  -- nvim-notify / snacks.nvim / whatever the user has).
+  -- Rich "Now Playing" card.
+  -- `mode = "pinned"` (default) opens a persistent floating window in a
+  -- screen corner that updates in place on every state change.
+  -- `mode = "toast"` fires a one-shot vim.notify (old behaviour).
+  -- `mode = "off"` disables the card entirely — `:RoonStatus` becomes
+  -- a no-op.
   card = {
-    -- If true, pop the card automatically whenever the target zone's
-    -- track changes. Off by default; opt-in for ambient notifications.
+    mode = "pinned",
+    -- Corner for the pinned widget: "SE" | "SW" | "NE" | "NW".
+    position = "SE",
+    -- Width in columns for the pinned widget.
+    width = 48,
+    -- Toast-only: if true, pop a toast on every track change.
     notify_on_change = false,
-    -- Toast lifetime in ms (honoured by most notifier backends).
+    -- Toast lifetime in ms.
     timeout = 4000,
     bar_width = 30,
     icons = {
