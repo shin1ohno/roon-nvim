@@ -90,12 +90,18 @@ function M.format(zone)
     table.insert(lines, icons.album .. "  " .. line3)
   end
   table.insert(lines, "")
+  -- Prefer whichever seek field actually has a number. Roon emits both
+  -- zone.seek_position and zone.now_playing.seek_position; only one is
+  -- populated on any given event.
+  local seek = type(zone.seek_position) == "number" and zone.seek_position
+    or (type(np.seek_position) == "number" and np.seek_position)
+    or 0
   table.insert(
     lines,
     string.format(
       "%s  %s",
       icon_for_state(icons, zone.state),
-      format_progress(zone.seek_position, np.length, opts.bar_width)
+      format_progress(seek, np.length, opts.bar_width)
     )
   )
   return lines

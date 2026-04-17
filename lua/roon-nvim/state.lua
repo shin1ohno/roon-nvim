@@ -60,6 +60,24 @@ function M.apply_event(ev)
     end
   elseif e == "zone_added" or e == "zone_changed" then
     if ev.zone and ev.zone.zone_id then
+      local existing = M.zones[ev.zone.zone_id]
+      -- Roon frequently emits zone_changed with seek_position = null
+      -- (only zone_seeked carries the live value). Replacing the whole
+      -- record would clobber the last known position between seeks,
+      -- flashing the progress bar back to 0. Preserve the existing
+      -- numeric position if the incoming frame doesn't have one.
+      if existing and type(ev.zone.seek_position) ~= "number" then
+        ev.zone.seek_position = existing.seek_position
+      end
+      if
+        existing
+        and existing.now_playing
+        and type(existing.now_playing.seek_position) == "number"
+        and ev.zone.now_playing
+        and type(ev.zone.now_playing.seek_position) ~= "number"
+      then
+        ev.zone.now_playing.seek_position = existing.now_playing.seek_position
+      end
       M.zones[ev.zone.zone_id] = ev.zone
     end
   elseif e == "zone_removed" then
@@ -71,6 +89,11 @@ function M.apply_event(ev)
     if z then
       z.seek_position = ev.seek_position
       z.queue_time_remaining = ev.queue_time_remaining
+      -- Mirror into now_playing so whichever path the renderer reads
+      -- from stays in sync.
+      if z.now_playing then
+        z.now_playing.seek_position = ev.seek_position
+      end
     end
   elseif e == "output_added" or e == "output_changed" then
     if ev.output and ev.output.output_id then
