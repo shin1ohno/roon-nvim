@@ -22,6 +22,25 @@ M.defaults = {
     neotree = "nvim-neotree",
     telescope = "nvim-telescope",
   },
+  -- Rich "Now Playing" card shown via vim.notify (routes through
+  -- nvim-notify / snacks.nvim / whatever the user has).
+  card = {
+    -- If true, pop the card automatically whenever the target zone's
+    -- track changes. Off by default; opt-in for ambient notifications.
+    notify_on_change = false,
+    -- Toast lifetime in ms (honoured by most notifier backends).
+    timeout = 4000,
+    bar_width = 30,
+    icons = {
+      track = "♪",
+      artist = "",
+      album = "",
+      playing = "▶",
+      paused = "⏸",
+      stopped = "■",
+      loading = "⋯",
+    },
+  },
 }
 
 M.options = vim.deepcopy(M.defaults)

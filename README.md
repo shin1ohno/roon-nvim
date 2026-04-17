@@ -131,6 +131,7 @@ require("telescope").load_extension("roon")
 | `:RoonNext`      | next track                                |
 | `:RoonPrevious`  | previous track                            |
 | `:RoonPlayPause` | toggle — reads current state from `watch` |
+| `:RoonStatus`    | pop the Now Playing card (see below)      |
 
 Bind them however you like. Example Lazy `keys`:
 
@@ -139,7 +140,41 @@ keys = {
   { "<leader>mp", "<cmd>RoonPlayPause<cr>", desc = "Roon play/pause" },
   { "<leader>mn", "<cmd>RoonNext<cr>",      desc = "Roon next" },
   { "<leader>mb", "<cmd>RoonPrevious<cr>",  desc = "Roon previous" },
-  { "<leader>ms", "<cmd>RoonStop<cr>",      desc = "Roon stop" },
+  { "<leader>mx", "<cmd>RoonStop<cr>",      desc = "Roon stop" },
+  { "<leader>ms", "<cmd>RoonStatus<cr>",    desc = "Roon status card" },
+},
+```
+
+#### Now Playing card
+
+`:RoonStatus` (or any key you bind) pops a multi-line notification with the currently-playing track, artist, album, playback state icon and a unicode progress bar:
+
+```
+♪  Automatic Yes
+   Zedd / John Mayer
+   Telos
+
+▶  ━━━━━━━━━━━●───────────────────  1:23 / 3:25
+```
+
+It routes through `vim.notify`, so whichever notifier you already use (`nvim-notify`, `snacks.nvim`, or the built-in fallback) styles it.
+
+Opt-in auto-pop on every track change:
+
+```lua
+opts = {
+  zone = "Qutest",
+  card = { notify_on_change = true },
+},
+```
+
+Customise icons / progress bar width / timeout:
+
+```lua
+card = {
+  bar_width = 40,
+  timeout   = 6000,
+  icons = { track = "♪", artist = "", album = "", playing = "▶", paused = "⏸" },
 },
 ```
 
