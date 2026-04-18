@@ -188,6 +188,23 @@ function M.search(opts)
       sorter = conf.generic_sorter(opts),
       previewer = false,
       attach_mappings = function(prompt_bufnr, map)
+        ---Category pickers (Artists / Albums) can play via Roon's
+        ---search-and-play CLI shortcut (`roon play -A <artist>` /
+        ---`roon play -a <album>`) instead of walking the browse tree.
+        ---This is both faster and immune to session-cursor drift when
+        ---the picker's finder refetched between display and selection.
+        ---Only works for "play-now" — queue / start-radio still need
+        ---the action-list drill.
+        local function shortcut_play(title)
+          if action_state then end -- no-op to keep upvalue captured below
+          if cat.category == "Artists" then
+            return { "play", "--artist", title }
+          elseif cat.category == "Albums" then
+            return { "play", "--album", title }
+          end
+          return nil
+        end
+
         local function fire(action)
           return function()
             local e = action_state.get_selected_entry()
@@ -195,6 +212,19 @@ function M.search(opts)
               return
             end
             actions.close(prompt_bufnr)
+
+            if action == "play-now" and type(e.value.title) == "string" and e.value.title ~= "" then
+              local args = shortcut_play(e.value.title)
+              if args then
+                if zone and zone ~= "" then
+                  table.insert(args, "--zone")
+                  table.insert(args, zone)
+                end
+                cli.exec_async(args)
+                return
+              end
+            end
+
             local key, err = resolve_action_key(session, e.value.item_key, e.value.hint, action)
             if not key then
               vim.notify("roon: " .. (err or "could not resolve playable action"), vim.log.levels.ERROR)
