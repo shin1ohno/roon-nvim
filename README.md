@@ -123,25 +123,50 @@ require("telescope").load_extension("roon")
 
 `setup{}` registers these user commands, targeting the configured `zone`:
 
-| command          | effect                                    |
-| ---------------- | ----------------------------------------- |
-| `:RoonPlay`      | resume                                    |
-| `:RoonPause`     | pause                                     |
-| `:RoonStop`      | stop                                      |
-| `:RoonNext`      | next track                                |
-| `:RoonPrevious`  | previous track                            |
-| `:RoonPlayPause` | toggle — reads current state from `watch` |
-| `:RoonStatus`    | pop the Now Playing card (see below)      |
+| command              | effect                                                |
+| -------------------- | ----------------------------------------------------- |
+| `:RoonPlay`          | resume                                                |
+| `:RoonPause`         | pause                                                 |
+| `:RoonStop`          | stop                                                  |
+| `:RoonNext`          | next track                                            |
+| `:RoonPrevious`      | previous track                                        |
+| `:RoonPlayPause`     | toggle — reads current state from `watch`             |
+| `:RoonSeek <n>`      | seek to `n` seconds, or `+n` / `-n` for relative      |
+| `:RoonSeekForward`   | seek +`steps.seek` seconds (default 10)               |
+| `:RoonSeekBack`      | seek -`steps.seek` seconds                            |
+| `:RoonVolume <n>`    | set output volume to `n`, or `+n` / `-n` for relative |
+| `:RoonVolumeUp`      | +`steps.volume` units (default 5)                     |
+| `:RoonVolumeDown`    | -`steps.volume` units                                 |
+| `:RoonMute`          | mute the primary output                               |
+| `:RoonUnmute`        | unmute                                                |
+| `:RoonMuteToggle`    | flip current mute state                               |
+| `:RoonStatus`        | pop / toggle the Now Playing card (see below)         |
+
+Seek targets the zone. Volume / mute target the zone's single output when there's one; for grouped zones pick a default output first via `roon output` in a terminal.
 
 Bind them however you like. Example Lazy `keys`:
 
 ```lua
 keys = {
-  { "<leader>mp", "<cmd>RoonPlayPause<cr>", desc = "Roon play/pause" },
-  { "<leader>mn", "<cmd>RoonNext<cr>",      desc = "Roon next" },
-  { "<leader>mb", "<cmd>RoonPrevious<cr>",  desc = "Roon previous" },
-  { "<leader>mx", "<cmd>RoonStop<cr>",      desc = "Roon stop" },
-  { "<leader>ms", "<cmd>RoonStatus<cr>",    desc = "Roon status card" },
+  { "<leader>mp", "<cmd>RoonPlayPause<cr>",   desc = "Roon play/pause" },
+  { "<leader>mn", "<cmd>RoonNext<cr>",        desc = "Roon next" },
+  { "<leader>m,", "<cmd>RoonPrevious<cr>",    desc = "Roon previous" },
+  { "<leader>ml", "<cmd>RoonSeekForward<cr>", desc = "Roon seek +10s" },
+  { "<leader>mh", "<cmd>RoonSeekBack<cr>",    desc = "Roon seek -10s" },
+  { "<leader>mk", "<cmd>RoonVolumeUp<cr>",    desc = "Roon volume +5" },
+  { "<leader>mj", "<cmd>RoonVolumeDown<cr>",  desc = "Roon volume -5" },
+  { "<leader>mM", "<cmd>RoonMuteToggle<cr>",  desc = "Roon mute toggle" },
+  { "<leader>mx", "<cmd>RoonStop<cr>",        desc = "Roon stop" },
+  { "<leader>mS", "<cmd>RoonStatus<cr>",      desc = "Roon status card" },
+},
+```
+
+Override the default step sizes via `opts`:
+
+```lua
+opts = {
+  zone = "Qutest",
+  steps = { seek = 15, volume = 2 },
 },
 ```
 

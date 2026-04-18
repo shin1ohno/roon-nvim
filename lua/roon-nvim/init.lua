@@ -41,24 +41,81 @@ local function register_commands()
     end
   end
 
+  ---Parse a numeric argument. Accepts absolute ("37"), relative ("+10",
+  ---"-5"), or empty (nil). Returns (value, is_relative).
+  local function parse_num(arg)
+    if not arg or arg == "" then
+      return nil, false
+    end
+    local rel = arg:sub(1, 1) == "+" or arg:sub(1, 1) == "-"
+    local n = tonumber(arg)
+    if not n then
+      vim.notify("roon: invalid numeric argument: " .. arg, vim.log.levels.ERROR)
+      return nil, false
+    end
+    return n, rel
+  end
+
+  local function seek_cmd(opts)
+    local n, rel = parse_num(opts.args)
+    if not n then
+      return
+    end
+    control.seek(n, rel)
+  end
+
+  local function volume_cmd(opts)
+    local n, rel = parse_num(opts.args)
+    if not n then
+      return
+    end
+    control.volume(n, rel)
+  end
+
   local defs = {
-    RoonPlay = control.play,
-    RoonPause = control.pause,
-    RoonStop = control.stop,
-    RoonNext = control.next,
-    RoonPrevious = control.previous,
-    RoonPlayPause = control.play_pause,
-    RoonStatus = status,
-    RoonShow = widget.open,
-    RoonHide = widget.close,
-    RoonToast = function()
-      card.show()
-    end,
-    RoonLog = log.show,
-    RoonLogClear = log.clear,
+    RoonPlay = { fn = control.play },
+    RoonPause = { fn = control.pause },
+    RoonStop = { fn = control.stop },
+    RoonNext = { fn = control.next },
+    RoonPrevious = { fn = control.previous },
+    RoonPlayPause = { fn = control.play_pause },
+    RoonStatus = { fn = status },
+    RoonShow = { fn = widget.open },
+    RoonHide = { fn = widget.close },
+    RoonToast = { fn = function() card.show() end },
+    RoonLog = { fn = log.show },
+    RoonLogClear = { fn = log.clear },
+
+    RoonSeek = { fn = seek_cmd, opts = { nargs = 1 } },
+    RoonSeekForward = {
+      fn = function()
+        control.seek(config.options.steps.seek, true)
+      end,
+    },
+    RoonSeekBack = {
+      fn = function()
+        control.seek(-config.options.steps.seek, true)
+      end,
+    },
+
+    RoonVolume = { fn = volume_cmd, opts = { nargs = 1 } },
+    RoonVolumeUp = {
+      fn = function()
+        control.volume(config.options.steps.volume, true)
+      end,
+    },
+    RoonVolumeDown = {
+      fn = function()
+        control.volume(-config.options.steps.volume, true)
+      end,
+    },
+
+    RoonMute = { fn = function() control.mute(true) end },
+    RoonUnmute = { fn = function() control.mute(false) end },
+    RoonMuteToggle = { fn = control.mute_toggle },
   }
-  for name, fn in pairs(defs) do
-    vim.api.nvim_create_user_command(name, fn, {})
+  for name, def in pairs(defs) do
+    vim.api.nvim_create_user_command(name, def.fn, def.opts or {})
   end
 end
 

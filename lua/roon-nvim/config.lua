@@ -22,6 +22,12 @@ M.defaults = {
     neotree = "nvim-neotree",
     telescope = "nvim-telescope",
   },
+  -- Step sizes for the convenience commands (:RoonSeekForward /
+  -- :RoonVolumeUp etc.). Applied when no argument is given.
+  steps = {
+    seek = 10, -- seconds
+    volume = 5, -- volume units (the CLI's native scale for the output)
+  },
   -- Rich "Now Playing" card.
   -- `mode = "pinned"` (default) opens a persistent floating window in a
   -- screen corner that updates in place on every state change.
