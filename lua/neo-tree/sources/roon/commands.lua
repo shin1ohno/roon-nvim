@@ -66,6 +66,13 @@ function M.toggle_node(state)
   cc.toggle_node(state, utils.wrap(source.toggle_directory, state))
 end
 
+---Re-navigate the roon source, re-fetching the hierarchy root. Exposed as
+---"roon_refresh" so the `R` binding (previously tied to filesystem-only
+---`refresh`) has a working handler.
+function M.roon_refresh(state)
+  source.navigate(state)
+end
+
 cc._add_common_commands(M)
 
 return M

@@ -20,6 +20,12 @@ local HIERARCHIES = {
 
 local DEFAULT_COUNT = 100
 
+-- Roon nodes are keyed by opaque item_key, not filesystem paths. Disable the
+-- git-status / filtered-files hooks on the `name` component so it does not try
+-- to index `node.path` (nil on every roon node) and explode with
+-- "table index is nil" inside neo-tree/git/init.lua.
+local NAME = { "name", use_git_status_colors = false, use_filtered_colors = false }
+
 M.default_config = {
   window = {
     mappings = {
@@ -28,24 +34,27 @@ M.default_config = {
       ["P"] = "roon_play_now",
       ["q"] = "roon_queue",
       ["r"] = "roon_start_radio",
-      ["R"] = "refresh",
+      ["R"] = "roon_refresh",
     },
   },
+  -- `subtitle` is already appended to `name` by item_to_node, so we don't need
+  -- a separate renderer component for it. The previous layout referenced a
+  -- non-existent "subtitle" component and produced "Component subtitle not
+  -- found" warnings on every redraw.
   renderers = {
     directory = {
       { "indent" },
       { "icon" },
-      { "name" },
+      NAME,
     },
     item = {
       { "indent" },
       { "icon" },
-      { "name" },
-      { "subtitle" },
+      NAME,
     },
     message = {
       { "indent", with_markers = false },
-      { "name", highlight = "NeoTreeMessage" },
+      vim.tbl_extend("force", NAME, { highlight = "NeoTreeMessage" }),
     },
   },
 }
