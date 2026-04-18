@@ -1,6 +1,6 @@
 local M = {}
 
----Wrap vim.notify so every message roon-nvim fires is also written to
+---Wrap vim.notify so every message roon.nvim fires is also written to
 ---the in-memory log, viewable with :RoonLog. Leaves the original
 ---vim.notify intact for messages from other plugins. Idempotent — a
 ---second setup() call does not stack another layer of wrapping.
@@ -8,7 +8,7 @@ local function install_notify_proxy()
   if M._proxied_notify and vim.notify == M._proxied_notify then
     return
   end
-  local log = require("roon-nvim.log")
+  local log = require("roon.log")
   local orig = vim.notify
   M._proxied_notify = function(msg, level, opts)
     local title = opts and opts.title or nil
@@ -24,11 +24,11 @@ local function install_notify_proxy()
 end
 
 local function register_commands()
-  local control = require("roon-nvim.control")
-  local card = require("roon-nvim.card")
-  local widget = require("roon-nvim.widget")
-  local log = require("roon-nvim.log")
-  local config = require("roon-nvim.config")
+  local control = require("roon.control")
+  local card = require("roon.card")
+  local widget = require("roon.widget")
+  local log = require("roon.log")
+  local config = require("roon.config")
 
   -- `:RoonStatus` adapts to the configured card mode: pinned ⇒ toggle
   -- the floating widget; toast ⇒ fire a one-shot notification; off ⇒ no-op.
@@ -121,19 +121,19 @@ end
 
 ---@param opts table|nil
 function M.setup(opts)
-  require("roon-nvim.config").apply(opts or {})
+  require("roon.config").apply(opts or {})
   install_notify_proxy()
   register_commands()
-  require("roon-nvim.card").enable_track_watcher()
-  require("roon-nvim.widget").setup_autos()
-  if require("roon-nvim.config").options.watch.auto_start then
-    require("roon-nvim.watch").start()
+  require("roon.card").enable_track_watcher()
+  require("roon.widget").setup_autos()
+  if require("roon.config").options.watch.auto_start then
+    require("roon.watch").start()
   end
   -- Pinned mode auto-opens the widget so the user sees the card without
   -- having to invoke any command. Toast / off modes stay silent.
-  if require("roon-nvim.config").options.card.mode == "pinned" then
+  if require("roon.config").options.card.mode == "pinned" then
     vim.defer_fn(function()
-      require("roon-nvim.widget").open()
+      require("roon.widget").open()
     end, 500)
   end
 end

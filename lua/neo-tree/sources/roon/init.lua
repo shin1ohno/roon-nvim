@@ -1,7 +1,7 @@
 local renderer = require("neo-tree.ui.renderer")
 
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
+local cli = require("roon.cli")
+local config = require("roon.config")
 
 local M = {
   name = "roon",

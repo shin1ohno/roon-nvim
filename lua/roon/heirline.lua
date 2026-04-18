@@ -1,5 +1,5 @@
-local config = require("roon-nvim.config")
-local state = require("roon-nvim.state")
+local config = require("roon.config")
+local state = require("roon.state")
 
 local M = {}
 

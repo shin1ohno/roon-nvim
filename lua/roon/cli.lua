@@ -1,4 +1,4 @@
-local config = require("roon-nvim.config")
+local config = require("roon.config")
 
 local M = {}
 

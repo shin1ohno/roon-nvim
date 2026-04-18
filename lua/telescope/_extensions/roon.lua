@@ -7,7 +7,7 @@ local function picker(default_hierarchy)
   return function(opts)
     opts = opts or {}
     opts.hierarchy = opts.hierarchy or default_hierarchy
-    require("roon-nvim.telescope").search(opts)
+    require("roon.telescope").search(opts)
   end
 end
 

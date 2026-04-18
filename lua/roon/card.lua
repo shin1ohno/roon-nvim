@@ -1,6 +1,6 @@
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
-local state = require("roon-nvim.state")
+local cli = require("roon.cli")
+local config = require("roon.config")
+local state = require("roon.state")
 
 local M = {}
 
@@ -155,7 +155,7 @@ function M.show(opts)
     title = "Roon — " .. z.display_name,
     timeout = config.options.card.timeout,
     -- snacks.nvim deduplicates by this id; nvim-notify ignores it.
-    id = "roon-nvim-card",
+    id = "roon-card",
   }
   -- nvim-notify expects `replace` to be the HANDLE from a previous notify
   -- call (not a string). Passing the raw id as replace errors. Only set

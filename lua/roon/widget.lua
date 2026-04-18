@@ -2,10 +2,10 @@
 ---corner and updated in place whenever the watch snapshot mutates, so
 ---the user always has a glanceable status card — unlike the toast
 ---variant in card.lua which disappears after a few seconds.
-local config = require("roon-nvim.config")
-local card = require("roon-nvim.card")
-local state = require("roon-nvim.state")
-local art = require("roon-nvim.art")
+local config = require("roon.config")
+local card = require("roon.card")
+local state = require("roon.state")
+local art = require("roon.art")
 
 local M = {}
 
@@ -332,13 +332,13 @@ function M.setup_autos()
         M.refresh()
       end
     end,
-    desc = "roon-nvim: reposition card on resize",
+    desc = "roon.nvim: reposition card on resize",
   })
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
       M.close()
     end,
-    desc = "roon-nvim: close card on exit",
+    desc = "roon.nvim: close card on exit",
   })
 end
 

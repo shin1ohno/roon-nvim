@@ -1,4 +1,4 @@
----In-memory ring buffer capturing everything roon-nvim sends to vim.notify.
+---In-memory ring buffer capturing everything roon.nvim sends to vim.notify.
 ---Exposed via `:RoonLog` so the user can audit what's been firing even after
 ---the notification toast has disappeared from the screen.
 local M = {}
@@ -43,10 +43,10 @@ function M.show()
     table.insert(lines, string.format("[%s] %-5s %s: %s", e.ts, e.level, e.ctx, e.msg))
   end
   if #lines == 0 then
-    lines = { "(no roon-nvim log entries yet)" }
+    lines = { "(no roon.nvim log entries yet)" }
   end
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.api.nvim_buf_set_name(buf, "roon-nvim://log")
+  vim.api.nvim_buf_set_name(buf, "roon://log")
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].modifiable = false

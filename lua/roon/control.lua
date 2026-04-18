@@ -1,5 +1,5 @@
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
+local cli = require("roon.cli")
+local config = require("roon.config")
 
 local M = {}
 
@@ -39,7 +39,7 @@ end
 ---Toggle play/pause based on the current zone's state from the watch snapshot.
 ---Falls back to `play` if state isn't populated yet.
 function M.play_pause()
-  local state = require("roon-nvim.state")
+  local state = require("roon.state")
   local z = state.primary_zone(config.options.zone)
   if z and z.state == "playing" then
     M.pause()
@@ -65,7 +65,7 @@ end
 ---return nil and let the CLI fall back to whatever `roon output` saved.
 ---@return string|nil output_id
 local function primary_output_id()
-  local state = require("roon-nvim.state")
+  local state = require("roon.state")
   local z = state.primary_zone(config.options.zone)
   if z and z.outputs and #z.outputs == 1 then
     return z.outputs[1].output_id
@@ -102,7 +102,7 @@ end
 ---Toggle mute based on the watch snapshot's current is_muted. No-op if the
 ---snapshot isn't populated or the zone has no outputs.
 function M.mute_toggle()
-  local state = require("roon-nvim.state")
+  local state = require("roon.state")
   local z = state.primary_zone(config.options.zone)
   if not z or not z.outputs or #z.outputs == 0 then
     return

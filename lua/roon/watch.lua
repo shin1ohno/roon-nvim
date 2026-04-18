@@ -1,6 +1,6 @@
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
-local state = require("roon-nvim.state")
+local cli = require("roon.cli")
+local config = require("roon.config")
+local state = require("roon.state")
 
 local M = {}
 
@@ -108,7 +108,7 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
   callback = function()
     M.stop()
   end,
-  desc = "roon-nvim: stop watch job on exit",
+  desc = "roon.nvim: stop watch job on exit",
 })
 
 return M

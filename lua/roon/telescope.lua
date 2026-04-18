@@ -5,8 +5,8 @@ local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local entry_display = require("telescope.pickers.entry_display")
 
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
+local cli = require("roon.cli")
+local config = require("roon.config")
 
 local M = {}
 

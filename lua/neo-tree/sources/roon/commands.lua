@@ -1,8 +1,8 @@
 local cc = require("neo-tree.sources.common.commands")
 local utils = require("neo-tree.utils")
 
-local cli = require("roon-nvim.cli")
-local config = require("roon-nvim.config")
+local cli = require("roon.cli")
+local config = require("roon.config")
 local source = require("neo-tree.sources.roon")
 
 local M = {}

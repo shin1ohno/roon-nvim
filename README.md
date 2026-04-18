@@ -1,4 +1,4 @@
-# roon-nvim
+# roon.nvim
 
 Neovim integration for [roon-rs](https://github.com/shin1ohno/roon-rs)'s `roon` CLI — control a Roon audio system from inside Neovim.
 
@@ -21,7 +21,7 @@ Three surfaces:
 
 ```lua
 {
-  "shin1ohno/roon-nvim",   -- or: dir = "~/ManagedProjects/roon-nvim" for local dev
+  "shin1ohno/roon.nvim",   -- or: dir = "~/ManagedProjects/roon.nvim" for local dev
   dependencies = {
     "rebelot/heirline.nvim",
     "nvim-neo-tree/neo-tree.nvim",
@@ -34,7 +34,7 @@ Three surfaces:
     -- watch = { auto_start = true, seek_hz = 1.0 },
   },
   config = function(_, opts)
-    require("roon-nvim").setup(opts)
+    require("roon").setup(opts)
   end,
 }
 ```
@@ -48,7 +48,7 @@ After `setup{}` the core is live (the `roon watch` job starts and `state` is pop
 Drop the component anywhere in your statusline spec:
 
 ```lua
-local roon = require("roon-nvim.heirline").component()
+local roon = require("roon.heirline").component()
 
 require("heirline").setup({
   statusline = {
@@ -65,7 +65,7 @@ return {
   "rebelot/heirline.nvim",
   opts = function(_, opts)
     opts.statusline = opts.statusline or {}
-    table.insert(opts.statusline, require("roon-nvim.heirline").component())
+    table.insert(opts.statusline, require("roon.heirline").component())
     return opts
   end,
 }
@@ -226,7 +226,7 @@ opts = {
 },
 ```
 
-The plugin caches fetched images at `$XDG_CACHE_HOME/nvim/roon-nvim/art/<image_key>.jpg`; delete that directory to force a re-fetch. If the art doesn't show up, `:lua =require("snacks.image").supports_terminal()` tells you whether the protocol detection succeeded — false means the terminal / tmux config is the issue, not the plugin.
+The plugin caches fetched images at `$XDG_CACHE_HOME/nvim/roon/art/<image_key>.jpg`; delete that directory to force a re-fetch. If the art doesn't show up, `:lua =require("snacks.image").supports_terminal()` tells you whether the protocol detection succeeded — false means the terminal / tmux config is the issue, not the plugin.
 
 ## Local development
 
@@ -234,7 +234,7 @@ During iteration, point Lazy at the local checkout:
 
 ```lua
 {
-  dir = "~/ManagedProjects/roon-nvim",
+  dir = "~/ManagedProjects/roon.nvim",
   dev = true,
   -- same dependencies / opts as above
 }
@@ -242,7 +242,7 @@ During iteration, point Lazy at the local checkout:
 
 ## Troubleshooting
 
-- `statusline shows nothing`: confirm the watch job is alive — `:lua print(require("roon-nvim.watch").is_running())`. If false, check `:lua print(require("roon-nvim.config").options.cli)` resolves to a working binary and `roon watch` runs from a shell.
+- `statusline shows nothing`: confirm the watch job is alive — `:lua print(require("roon.watch").is_running())`. If false, check `:lua print(require("roon.config").options.cli)` resolves to a working binary and `roon watch` runs from a shell.
 - `play-item returns "no matching action"`: the selected item doesn't have a Play/Queue/Radio action in Roon. Drill one level deeper in neo-tree (to the album's "Play Album" entry) and try again. The error surface includes the list of actual action titles the item offers.
 - `empty search results`: try a longer query (< 2 chars are suppressed). Roon's search is weighted toward well-tagged library content.
 - `session cursor stuck`: delete `~/.config/roon-rs/sessions/<key>.toml` (neo-tree uses `nvim-neotree`, telescope uses `nvim-telescope`) and retry.
@@ -251,14 +251,14 @@ During iteration, point Lazy at the local checkout:
 
 ```
 ┌──────────────────────────┐         ┌──────────────────────────────┐
-│    heirline component    │◄────────│  roon-nvim.state (pub/sub)   │
+│    heirline component    │◄────────│  roon.state (pub/sub)   │
 │    (reads on redraw)     │         │    zones / outputs snapshot  │
 └──────────────────────────┘         └───────────────▲──────────────┘
                                                      │
 ┌──────────────────────────┐                         │
 │   neo-tree source "roon" │                         │
 │   (per-click vim.system) │       ┌─────────────────┴──────────────┐
-└──────────────────────────┘       │       roon-nvim.watch          │
+└──────────────────────────┘       │       roon.watch          │
                                    │    (long-running jobstart)     │
 ┌──────────────────────────┐       └────────────────▲───────────────┘
 │ telescope ext. "roon"    │                        │

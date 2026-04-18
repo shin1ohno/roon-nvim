@@ -2,11 +2,11 @@
 ---caches them on disk, and hands off rendering to snacks.nvim's image module
 ---(Kitty Graphics Protocol under the hood — Kitty / WezTerm / Ghostty).
 ---The widget module owns the float + placement lifecycle.
-local config = require("roon-nvim.config")
+local config = require("roon.config")
 
 local M = {}
 
-local CACHE_DIR = vim.fn.stdpath("cache") .. "/roon-nvim/art"
+local CACHE_DIR = vim.fn.stdpath("cache") .. "/roon/art"
 
 ---Return true if the runtime + terminal can actually render an image.
 ---Two preconditions: snacks.nvim is loaded, and its terminal detection
