@@ -23,6 +23,64 @@ local displayer = entry_display.create({
   items = { { width = 40 }, { remaining = true } },
 })
 
+-- Map a user-chosen action ("play-now"|"queue"|"start-radio") to the action
+-- titles Roon exposes at the leaf of an action_list.
+local ACTION_TITLE = {
+  ["play-now"] = "Play Now",
+  ["queue"] = "Queue",
+  ["start-radio"] = "Start Radio",
+}
+
+---Roon's search surfaces `list` / `action_list` entries that are not directly
+---playable — passing them to `play-item` yields `"no matching action"`.
+---Drill up to two levels to locate the concrete `action` leaf matching
+---`action`. Returns `item_key, nil` on success, or `nil, err` on failure.
+---@param session string
+---@param item_key string
+---@param hint string|nil
+---@param action string
+---@return string|nil, string|nil
+local function resolve_action_key(session, item_key, hint, action)
+  if hint == "action" then
+    return item_key, nil
+  end
+  local leaf_title = ACTION_TITLE[action]
+  for _ = 1, 2 do -- cap drill depth to avoid wandering the tree
+    local ok, resp = cli.oneshot_sync({
+      "browse",
+      "--session",
+      session,
+      "--item-key",
+      item_key,
+      "--count",
+      "20",
+    })
+    if not ok or not resp or not resp.items then
+      return nil, "browse failed"
+    end
+    -- Direct hit: an `action` child whose title is the requested leaf.
+    for _, it in ipairs(resp.items) do
+      if it.hint == "action" and it.title == leaf_title then
+        return it.item_key, nil
+      end
+    end
+    -- Otherwise drill through the first `action_list` whose title starts
+    -- with "Play" ("Play Artist" / "Play Album" / "Play Genre" etc.).
+    local next_key
+    for _, it in ipairs(resp.items) do
+      if it.hint == "action_list" and type(it.title) == "string" and it.title:match("^Play") then
+        next_key = it.item_key
+        break
+      end
+    end
+    if not next_key then
+      return nil, "no playable action under this item"
+    end
+    item_key = next_key
+  end
+  return nil, "drill depth exceeded"
+end
+
 ---@param opts table|nil
 function M.search(opts)
   opts = opts or {}
@@ -88,7 +146,12 @@ function M.search(opts)
               return
             end
             actions.close(prompt_bufnr)
-            cli.play_item_async(session, e.value.item_key, zone, action)
+            local key, err = resolve_action_key(session, e.value.item_key, e.value.hint, action)
+            if not key then
+              vim.notify("roon: " .. (err or "could not resolve playable action"), vim.log.levels.ERROR)
+              return
+            end
+            cli.play_item_async(session, key, zone, action)
           end
         end
         actions.select_default:replace(fire("play-now"))
