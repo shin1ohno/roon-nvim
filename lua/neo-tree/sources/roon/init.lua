@@ -64,11 +64,20 @@ M.default_config = {
 ---@param item table
 ---@param session string
 ---@return table
+---`vim.json.decode` maps JSON `null` to `vim.NIL` (userdata), which is truthy
+---in Lua and cannot be concatenated. Coerce nullish JSON fields to real nil.
+local function nilify(v)
+  if v == nil or v == vim.NIL then return nil end
+  return v
+end
+
 local function item_to_node(parent_id, item, session)
   local is_leaf = item.hint == "action" or item.hint == "action_list"
-  local id = parent_id .. "/" .. (item.item_key or item.title or "?")
-  local subtitle = item.subtitle
-  local name = item.title or "(untitled)"
+  local item_key = nilify(item.item_key)
+  local title = nilify(item.title)
+  local subtitle = nilify(item.subtitle)
+  local id = parent_id .. "/" .. (item_key or title or "?")
+  local name = title or "(untitled)"
   if subtitle and subtitle ~= "" then
     name = name .. "  " .. subtitle
   end
@@ -79,9 +88,9 @@ local function item_to_node(parent_id, item, session)
     children = is_leaf and nil or {},
     loaded = is_leaf and true or false,
     extra = {
-      item_key = item.item_key,
+      item_key = item_key,
       session = session,
-      hint = item.hint,
+      hint = nilify(item.hint),
       subtitle = subtitle,
     },
   }
