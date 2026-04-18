@@ -106,6 +106,40 @@ local function cli_with_retry(args)
   return nil
 end
 
+---Detect the "stuck session" symptom: Roon Core occasionally locks the
+---server-side state for a CLI session in a way that makes every search
+---return a single `{"title":"No Results"}` placeholder regardless of input.
+---Deleting the on-disk session TOML forces the next CLI invocation to
+---register a fresh session with Core, which clears the lock.
+---@param resp table|nil
+---@return boolean
+local function looks_stuck(resp)
+  if not resp or type(resp.items) ~= "table" then return false end
+  if #resp.items ~= 1 then return false end
+  local only = resp.items[1]
+  return nilify(only and only.title) == "No Results"
+end
+
+---@param session string
+local function reset_session_file(session)
+  local path = vim.fn.expand("~/.config/roon-rs/sessions/" .. session .. ".toml")
+  pcall(os.remove, path)
+end
+
+---Run `search` with recovery for both transient MOO errors and the
+---stuck-session "No Results" state.
+local function search_with_recovery(session, prompt)
+  local args = {
+    "search", "--session", session, "--input", prompt, "--count", "50",
+  }
+  local resp = cli_with_retry(args)
+  if looks_stuck(resp) then
+    reset_session_file(session)
+    resp = cli_with_retry(args)
+  end
+  return resp
+end
+
 ---Fetch the item list to display in the picker for a given prompt.
 ---For `search` (default) this is the raw cross-category response. For a
 ---specific category ("artists"/"albums"/...) Roon requires two calls:
@@ -113,9 +147,7 @@ end
 ---  2. drill into the matching category entry ("Artists"/"Albums"/...)
 ---     whose children are the text-filtered results.
 local function fetch_items(session, category, prompt)
-  local resp = cli_with_retry({
-    "search", "--session", session, "--input", prompt, "--count", "50",
-  })
+  local resp = search_with_recovery(session, prompt)
   if not resp or not resp.items then return nil end
   if not category then return resp.items end
   local category_key
