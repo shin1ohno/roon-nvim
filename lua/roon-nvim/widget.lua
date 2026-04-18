@@ -86,11 +86,19 @@ local function render_into_buf(lines, title)
   vim.bo[buf].modifiable = false
 end
 
+-- nvim_win_set_config rejects `noautocmd` on existing windows — it only has
+-- meaning at window creation via nvim_open_win. Strip it before reconfiguring.
+local function config_for_update(cfg)
+  local c = vim.deepcopy(cfg)
+  c.noautocmd = nil
+  return c
+end
+
 local function update_win(lines)
   local pos_key = config.options.card.position or "SE"
   local win_cfg = window_config(#lines + 1, pos_key) -- +1 for title line
   if win and vim.api.nvim_win_is_valid(win) then
-    vim.api.nvim_win_set_config(win, win_cfg)
+    vim.api.nvim_win_set_config(win, config_for_update(win_cfg))
   else
     win = vim.api.nvim_open_win(buf, false, win_cfg)
     -- Dim the title line for a bit of hierarchy.
@@ -198,7 +206,7 @@ local function attach_art(image_path)
   ensure_art_buf(cells)
   local cfg = art_window_config(cells)
   if art_win and vim.api.nvim_win_is_valid(art_win) then
-    vim.api.nvim_win_set_config(art_win, cfg)
+    vim.api.nvim_win_set_config(art_win, config_for_update(cfg))
   else
     art_win = vim.api.nvim_open_win(art_buf, false, cfg)
     vim.wo[art_win].winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder"
@@ -242,7 +250,7 @@ local function maybe_update_art(zone)
     -- Art is already showing this exact image; just reposition if needed.
     local cells = config.options.card.art.size or 12
     if art_win and vim.api.nvim_win_is_valid(art_win) then
-      pcall(vim.api.nvim_win_set_config, art_win, art_window_config(cells))
+      pcall(vim.api.nvim_win_set_config, art_win, config_for_update(art_window_config(cells)))
     end
     return
   end
