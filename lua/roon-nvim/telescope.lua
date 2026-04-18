@@ -81,35 +81,84 @@ local function resolve_action_key(session, item_key, hint, action)
   return nil, "drill depth exceeded"
 end
 
----@param opts table|nil
+---Valid picker categories mapped to prompt title + the title of the
+---category-drill entry that Roon's cross-category search returns.
+local CATEGORIES = {
+  search    = { title = "Roon Search",    category = nil },
+  artists   = { title = "Roon Artists",   category = "Artists" },
+  albums    = { title = "Roon Albums",    category = "Albums" },
+  tracks    = { title = "Roon Tracks",    category = "Tracks" },
+  composers = { title = "Roon Composers", category = "Composers" },
+}
+
+---Run a CLI call once, and retry once on transient MOO/WebSocket errors.
+---Roon Core occasionally rejects back-to-back sessions with
+---"WebSocket protocol error: Connection reset"; a brief re-attempt almost
+---always succeeds.
+local function cli_with_retry(args)
+  local ok, resp, err = cli.oneshot_sync(args)
+  if ok then return resp end
+  if type(err) == "string" and (err:find("MOO protocol error") or err:find("Connection reset") or err:find("connection closed")) then
+    vim.wait(200)
+    local ok2, resp2 = cli.oneshot_sync(args)
+    if ok2 then return resp2 end
+  end
+  return nil
+end
+
+---Fetch the item list to display in the picker for a given prompt.
+---For `search` (default) this is the raw cross-category response. For a
+---specific category ("artists"/"albums"/...) Roon requires two calls:
+---  1. search the cross-category hierarchy to establish the session's list
+---  2. drill into the matching category entry ("Artists"/"Albums"/...)
+---     whose children are the text-filtered results.
+local function fetch_items(session, category, prompt)
+  local resp = cli_with_retry({
+    "search", "--session", session, "--input", prompt, "--count", "50",
+  })
+  if not resp or not resp.items then return nil end
+  if not category then return resp.items end
+  local category_key
+  for _, it in ipairs(resp.items) do
+    if nilify(it.title) == category and nilify(it.hint) == "list" then
+      category_key = nilify(it.item_key)
+      break
+    end
+  end
+  if not category_key then return {} end
+  local drilled = cli_with_retry({
+    "browse", "--session", session, "--item-key", category_key, "--count", "50",
+  })
+  if not drilled or not drilled.items then return {} end
+  return drilled.items
+end
+
+---@param opts table|nil  {hierarchy="search"|"artists"|"albums"|"tracks"|...}
 function M.search(opts)
   opts = opts or {}
   local session = opts.session or config.options.session.telescope
   local zone = opts.zone or config.options.zone
+  local picker_kind = opts.hierarchy or "search"
+  local cat = CATEGORIES[picker_kind] or CATEGORIES.search
 
   pickers
     .new(opts, {
-      prompt_title = "Roon Search",
-      debounce = 150,
+      prompt_title = cat.title,
+      -- Debounce generously: Roon Core chokes on rapid back-to-back sessions,
+      -- so waiting for the user to stop typing costs less than collecting
+      -- failed intermediate searches.
+      debounce = 400,
       finder = finders.new_dynamic({
         fn = function(prompt)
           if not prompt or #prompt < 2 then
             return {}
           end
-          local ok, resp = cli.oneshot_sync({
-            "search",
-            "--session",
-            session,
-            "--input",
-            prompt,
-            "--count",
-            "50",
-          })
-          if not ok or not resp or not resp.items then
+          local items = fetch_items(session, cat.category, prompt)
+          if not items then
             return {}
           end
           local results = {}
-          for _, it in ipairs(resp.items) do
+          for _, it in ipairs(items) do
             local hint = nilify(it.hint)
             local item_key = nilify(it.item_key)
             if hint ~= "header" and item_key then
