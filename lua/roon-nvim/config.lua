@@ -12,7 +12,7 @@ M.defaults = {
   watch = {
     auto_start = true,
     -- Per-zone seek throttle passed to `roon watch --seek-hz`. 0 = every tick.
-    seek_hz = 1.0,
+    seek_hz = 5.0,
     -- Restart backoff seconds (start, max).
     backoff = { 3, 30 },
   },
