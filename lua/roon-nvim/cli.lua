@@ -41,38 +41,62 @@ function M.oneshot_sync(args)
   return true, parsed, nil
 end
 
+---Detect transient MOO/WebSocket errors from stderr that typically succeed
+---on a short re-attempt.
+local function is_transient_err(err)
+  if type(err) ~= "string" then return false end
+  return err:find("MOO protocol error") ~= nil
+    or err:find("Connection reset") ~= nil
+    or err:find("connection closed") ~= nil
+    or err:find("registry handshake") ~= nil
+end
+
 ---Fire-and-forget CLI invocation whose stdout is NOT JSON (e.g. play, pause,
----next, previous). Only reports failures via vim.notify.
+---next, previous). Retries once on transient MOO/connection errors, then
+---reports failures via vim.notify.
 ---@param args string[]
 function M.exec_async(args)
-  vim.system(argv(args), { text = true }, function(result)
-    if result.code ~= 0 then
+  local function run(attempt)
+    vim.system(argv(args), { text = true }, function(result)
+      if result.code == 0 then return end
       local err = (result.stderr ~= "" and result.stderr) or ("exit " .. tostring(result.code))
+      if attempt == 1 and is_transient_err(err) then
+        vim.defer_fn(function() run(2) end, 300)
+        return
+      end
       vim.schedule(function()
         vim.notify("roon " .. (args[1] or "?") .. " failed: " .. err, vim.log.levels.ERROR)
       end)
-    end
-  end)
+    end)
+  end
+  run(1)
 end
 
----Async one-shot. Callback runs on main loop via vim.schedule.
+---Async one-shot. Callback runs on main loop via vim.schedule. Retries once
+---on transient MOO/connection errors before delivering failure to `cb`.
 ---@param args string[]
 ---@param cb fun(ok: boolean, parsed: table|nil, err: string|nil)
 function M.oneshot_async(args, cb)
-  vim.system(argv(args), { text = true }, function(result)
-    vim.schedule(function()
+  local function run(attempt)
+    vim.system(argv(args), { text = true }, function(result)
       if result.code ~= 0 then
-        cb(false, nil, (result.stderr ~= "" and result.stderr) or ("exit " .. tostring(result.code)))
+        local err = (result.stderr ~= "" and result.stderr) or ("exit " .. tostring(result.code))
+        if attempt == 1 and is_transient_err(err) then
+          vim.defer_fn(function() run(2) end, 300)
+          return
+        end
+        vim.schedule(function() cb(false, nil, err) end)
         return
       end
       local ok, parsed = pcall(vim.json.decode, result.stdout or "")
       if not ok then
-        cb(false, nil, "json parse: " .. tostring(parsed))
+        vim.schedule(function() cb(false, nil, "json parse: " .. tostring(parsed)) end)
         return
       end
-      cb(true, parsed, nil)
+      vim.schedule(function() cb(true, parsed, nil) end)
     end)
-  end)
+  end
+  run(1)
 end
 
 ---Start a long-running job whose stdout is NDJSON.
