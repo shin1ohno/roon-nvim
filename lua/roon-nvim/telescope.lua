@@ -10,6 +10,14 @@ local config = require("roon-nvim.config")
 
 local M = {}
 
+---`vim.json.decode` maps JSON `null` to `vim.NIL` (userdata), which is truthy
+---in Lua and cannot be concatenated. Coerce nullish values to real nil so
+---`x or ""` / `and x` / `..` all behave.
+local function nilify(v)
+  if v == nil or v == vim.NIL then return nil end
+  return v
+end
+
 local displayer = entry_display.create({
   separator = "  ",
   items = { { width = 40 }, { remaining = true } },
@@ -42,18 +50,29 @@ function M.search(opts)
           if not ok or not resp or not resp.items then
             return {}
           end
-          return vim.tbl_filter(function(it)
-            return it.hint ~= "header" and it.item_key
-          end, resp.items)
+          local results = {}
+          for _, it in ipairs(resp.items) do
+            local hint = nilify(it.hint)
+            local item_key = nilify(it.item_key)
+            if hint ~= "header" and item_key then
+              table.insert(results, {
+                item_key = item_key,
+                title = nilify(it.title) or "",
+                subtitle = nilify(it.subtitle) or "",
+                hint = hint,
+              })
+            end
+          end
+          return results
         end,
         entry_maker = function(item)
           return {
             value = item,
-            ordinal = (item.title or "") .. " " .. (item.subtitle or ""),
+            ordinal = item.title .. " " .. item.subtitle,
             display = function()
               return displayer({
-                { item.title or "", "TelescopeResultsIdentifier" },
-                { item.subtitle or "", "TelescopeResultsComment" },
+                { item.title, "TelescopeResultsIdentifier" },
+                { item.subtitle, "TelescopeResultsComment" },
               })
             end,
           }
