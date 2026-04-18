@@ -165,6 +165,143 @@ local function fetch_items(session, category, prompt)
   return drilled.items
 end
 
+---Open a picker listing the albums that belong to one artist. The artist's
+---children are fetched via one browse call rather than a new search, so the
+---list is scoped to that artist instead of the global library.
+---@param opts table
+---@param artist_title string
+---@param artist_item_key string
+local function open_artist_albums_picker(opts, artist_title, artist_item_key)
+  local session = opts.session or config.options.session.telescope
+  local zone = opts.zone or config.options.zone
+
+  local drilled = cli_with_retry({
+    "browse", "--session", session, "--item-key", artist_item_key, "--count", "100",
+  })
+  if not drilled or type(drilled.items) ~= "table" then
+    vim.notify("roon: could not browse albums for " .. artist_title, vim.log.levels.ERROR)
+    return
+  end
+
+  local albums = {}
+  for _, it in ipairs(drilled.items) do
+    -- Roon exposes the artist's albums as `hint = "list"` children; the
+    -- "Play Artist" action_list and the occasional action leaf are skipped.
+    if nilify(it.hint) == "list" then
+      table.insert(albums, {
+        item_key = nilify(it.item_key),
+        title = nilify(it.title) or "",
+        subtitle = nilify(it.subtitle) or "",
+      })
+    end
+  end
+  if #albums == 0 then
+    vim.notify("roon: no albums listed under " .. artist_title, vim.log.levels.WARN)
+    return
+  end
+
+  pickers
+    .new(opts, {
+      prompt_title = "Albums by " .. artist_title,
+      finder = finders.new_table({
+        results = albums,
+        entry_maker = function(item)
+          return {
+            value = item,
+            ordinal = item.title .. " " .. item.subtitle,
+            display = function()
+              return displayer({
+                { item.title, "TelescopeResultsIdentifier" },
+                { item.subtitle, "TelescopeResultsComment" },
+              })
+            end,
+          }
+        end,
+      }),
+      sorter = conf.generic_sorter(opts),
+      previewer = false,
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          local e = action_state.get_selected_entry()
+          actions.close(bufnr)
+          if not e or not e.value or e.value.title == "" then return end
+          local args = { "play", "--album", e.value.title }
+          if zone and zone ~= "" then
+            table.insert(args, "--zone")
+            table.insert(args, zone)
+          end
+          cli.exec_async(args)
+        end)
+        return true
+      end,
+    })
+    :find()
+end
+
+---Open a static submenu picker listing the things we can do with a selected
+---artist. Selecting an action either fires a CLI call (Play / Shuffle /
+---Queue / Start Radio) or recurses into another picker (Browse albums).
+---@param opts table
+---@param artist_title string
+---@param artist_item_key string
+local function open_artist_submenu(opts, artist_title, artist_item_key)
+  local session = opts.session or config.options.session.telescope
+  local zone = opts.zone or config.options.zone
+
+  local function with_zone(args)
+    if zone and zone ~= "" then
+      table.insert(args, "--zone")
+      table.insert(args, zone)
+    end
+    return args
+  end
+
+  local function drill_play(action)
+    local key, err = resolve_action_key(session, artist_item_key, "list", action)
+    if not key then
+      vim.notify("roon: " .. (err or "could not resolve " .. action), vim.log.levels.ERROR)
+      return
+    end
+    cli.play_item_async(session, key, zone, action)
+  end
+
+  local menu = {
+    { label = "▶  Play all tracks", run = function()
+      cli.exec_async(with_zone({ "play", "--artist", artist_title }))
+    end },
+    { label = "🔀 Shuffle all tracks", run = function()
+      cli.exec_async(with_zone({ "play", "--artist", artist_title, "--shuffle" }))
+    end },
+    { label = "📂 Browse albums", run = function()
+      open_artist_albums_picker(opts, artist_title, artist_item_key)
+    end },
+    { label = "➕ Queue all tracks", run = function() drill_play("queue") end },
+    { label = "📻 Start Radio", run = function() drill_play("start-radio") end },
+  }
+
+  pickers
+    .new(opts, {
+      prompt_title = artist_title,
+      finder = finders.new_table({
+        results = menu,
+        entry_maker = function(m)
+          return { value = m, ordinal = m.label, display = m.label }
+        end,
+      }),
+      sorter = conf.generic_sorter(opts),
+      previewer = false,
+      attach_mappings = function(bufnr)
+        actions.select_default:replace(function()
+          local e = action_state.get_selected_entry()
+          actions.close(bufnr)
+          if e and e.value and e.value.run then e.value.run() end
+        end)
+        return true
+      end,
+    })
+    :find()
+end
+
 ---@param opts table|nil  {hierarchy="search"|"artists"|"albums"|"tracks"|...}
 function M.search(opts)
   opts = opts or {}
@@ -244,6 +381,16 @@ function M.search(opts)
               return
             end
             actions.close(prompt_bufnr)
+
+            -- Artist selection opens a submenu (Play / Shuffle / Browse
+            -- albums / Queue / Start Radio) instead of playing directly,
+            -- since "play an artist" has more useful modes than just
+            -- play-now. Queue / Start Radio shortcuts still fire directly.
+            if action == "play-now" and cat.category == "Artists"
+              and type(e.value.title) == "string" and e.value.title ~= "" then
+              open_artist_submenu(opts or {}, e.value.title, e.value.item_key)
+              return
+            end
 
             if action == "play-now" and type(e.value.title) == "string" and e.value.title ~= "" then
               local args = shortcut_play(e.value.title)
