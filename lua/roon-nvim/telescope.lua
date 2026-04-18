@@ -224,13 +224,17 @@ local function open_artist_albums_picker(opts, artist_title, artist_item_key)
         actions.select_default:replace(function()
           local e = action_state.get_selected_entry()
           actions.close(bufnr)
-          if not e or not e.value or e.value.title == "" then return end
-          local args = { "play", "--album", e.value.title }
-          if zone and zone ~= "" then
-            table.insert(args, "--zone")
-            table.insert(args, zone)
+          if not e or not e.value or not e.value.item_key then return end
+          -- Use play-item with the album's fresh item_key instead of
+          -- `roon play --album <title>`. The CLI fuzzy-matches by title
+          -- across the whole library, which picks the wrong album when
+          -- multiple artists share a title ("21", "Untitled", ...).
+          local key, err = resolve_action_key(session, e.value.item_key, "list", "play-now")
+          if not key then
+            vim.notify("roon: " .. (err or "could not resolve album play action"), vim.log.levels.ERROR)
+            return
           end
-          cli.exec_async(args)
+          cli.play_item_async(session, key, zone, "play-now")
         end)
         return true
       end,
@@ -366,10 +370,14 @@ function M.search(opts)
         ---the action-list drill.
         local function shortcut_play(title)
           if action_state then end -- no-op to keep upvalue captured below
+          -- Only use search-and-play for Artists: artist names are
+          -- (usually) unique enough that Roon's fuzzy match lands on
+          -- the right result. Album titles collide across artists
+          -- ("21", "Untitled", ...) and `--album` cannot be scoped to
+          -- the artist, so prefer the drill + play-item path for
+          -- Albums even though it is slightly slower.
           if cat.category == "Artists" then
             return { "play", "--artist", title }
-          elseif cat.category == "Albums" then
-            return { "play", "--album", title }
           end
           return nil
         end
