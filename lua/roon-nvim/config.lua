@@ -31,7 +31,7 @@ M.defaults = {
   card = {
     mode = "pinned",
     -- Corner for the pinned widget: "SE" | "SW" | "NE" | "NW".
-    position = "SE",
+    position = "NE",
     -- Width in columns for the pinned widget.
     width = 48,
     -- Toast-only: if true, pop a toast on every track change.
