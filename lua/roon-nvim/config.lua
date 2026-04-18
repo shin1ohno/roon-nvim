@@ -54,6 +54,17 @@ M.defaults = {
       stopped = "■",
       loading = "⋯",
     },
+    -- Optional album art rendered next to the card. Opt-in because it
+    -- needs (a) snacks.nvim loaded, (b) a Kitty-graphics-capable
+    -- terminal (Kitty / WezTerm / Ghostty), and (c) `allow-passthrough on`
+    -- when run under tmux.
+    art = {
+      enabled = false,
+      -- Square side length measured in terminal cells.
+      size = 12,
+      -- Side to pin the art on relative to the card: "left" | "right".
+      position = "left",
+    },
   },
 }
 

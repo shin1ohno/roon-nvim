@@ -203,6 +203,31 @@ card = {
 },
 ```
 
+#### Album art (opt-in)
+
+The pinned widget can pin a cover image next to the text via the Kitty Graphics Protocol. Requirements:
+
+- a Kitty-family terminal: **Kitty**, **WezTerm**, or **Ghostty** (others may work if they support the protocol)
+- **snacks.nvim** is loaded (AstroNvim pulls it in through many community plugins; otherwise add it explicitly to your dependencies)
+- if you run under **tmux**: `set -g allow-passthrough on` in `tmux.conf`
+
+Then:
+
+```lua
+opts = {
+  zone = "Qutest",
+  card = {
+    art = {
+      enabled  = true,
+      size     = 12,       -- square side in terminal cells
+      position = "left",   -- "left" | "right"
+    },
+  },
+},
+```
+
+The plugin caches fetched images at `$XDG_CACHE_HOME/nvim/roon-nvim/art/<image_key>.jpg`; delete that directory to force a re-fetch. If the art doesn't show up, `:lua =require("snacks.image").supports_terminal()` tells you whether the protocol detection succeeded — false means the terminal / tmux config is the issue, not the plugin.
+
 ## Local development
 
 During iteration, point Lazy at the local checkout:
