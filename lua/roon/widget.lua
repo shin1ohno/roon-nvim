@@ -18,8 +18,11 @@ local art_buf = nil
 local art_win = nil
 local art_placement = nil
 local last_image_key = nil
--- Monotonic counter so a fetch that returns stale (user skipped to a
--- newer track before this one finished) is rejected by attach_art.
+-- Monotonic counter so a fetch that returns stale is rejected by its own
+-- callback. Bumped on (a) a newer track fetch superseding an older one and
+-- (b) detach_art() — so an in-flight fetch that completes *after* the widget
+-- was hidden never resurrects the art float on its own. The invariant we
+-- protect: an art window exists only while `visible` is true.
 local fetch_seq = 0
 
 local POSITIONS = {
@@ -188,6 +191,10 @@ local function ensure_art_buf(cells)
 end
 
 local function detach_art()
+  -- Supersede any in-flight fetch: its callback checks `seq ~= fetch_seq`
+  -- and bails, so a fetch that finishes after this point cannot re-open the
+  -- art float while the widget is hidden.
+  fetch_seq = fetch_seq + 1
   if art_placement then
     pcall(function()
       art_placement:close()
@@ -202,6 +209,12 @@ local function detach_art()
 end
 
 local function attach_art(image_path)
+  -- Art is strictly subordinate to the player widget: never paint it while
+  -- the widget is hidden. Guards the async fetch callback, which can land
+  -- after the user (or VimLeavePre) closed the widget.
+  if not visible then
+    return
+  end
   local cells = config.options.card.art.size or 12
   ensure_art_buf(cells)
   local cfg = art_window_config(cells)
@@ -230,6 +243,12 @@ local function attach_art(image_path)
 end
 
 local function maybe_update_art(zone)
+  -- Belt-and-suspenders: refresh() already returns early when hidden, but
+  -- never let any future caller start an art fetch for a hidden widget.
+  if not visible then
+    detach_art()
+    return
+  end
   if not config.options.card.art.enabled then
     if art_win then
       detach_art()
