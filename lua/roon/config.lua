@@ -36,6 +36,11 @@ M.defaults = {
   -- a no-op.
   card = {
     mode = "pinned",
+    -- When true (and mode == "pinned"), setup() auto-opens the pinned widget
+    -- ~500ms after start. Set false to keep it hidden until the user invokes
+    -- :RoonStatus / :RoonShow — avoids the consumer-side "open then close"
+    -- workaround.
+    auto_open = true,
     -- Corner for the pinned widget: "SE" | "SW" | "NE" | "NW".
     position = "NE",
     -- Width in columns for the pinned widget.

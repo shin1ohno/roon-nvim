@@ -82,6 +82,12 @@ local function register_commands()
     RoonStatus = { fn = status },
     RoonShow = { fn = widget.open },
     RoonHide = { fn = widget.close },
+    -- Toggle the heirline now-playing component (visibility + lazy attach).
+    RoonStatuslineToggle = {
+      fn = function()
+        require("roon.heirline").toggle()
+      end,
+    },
     RoonToast = { fn = function() card.show() end },
     RoonLog = { fn = log.show },
     RoonLogClear = { fn = log.clear },
@@ -130,8 +136,9 @@ function M.setup(opts)
     require("roon.watch").start()
   end
   -- Pinned mode auto-opens the widget so the user sees the card without
-  -- having to invoke any command. Toast / off modes stay silent.
-  if require("roon.config").options.card.mode == "pinned" then
+  -- having to invoke any command. Toast / off modes stay silent. Opt out
+  -- with `card.auto_open = false` to keep it hidden until :RoonStatus.
+  if require("roon.config").options.card.mode == "pinned" and require("roon.config").options.card.auto_open then
     vim.defer_fn(function()
       require("roon.widget").open()
     end, 500)
