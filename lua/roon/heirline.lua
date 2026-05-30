@@ -116,4 +116,81 @@ function M.component(opts)
   }
 end
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- Batteries-included statusline integration
+--
+-- `component()` above is the SDK-pure factory — consumers that lay out their
+-- statusline by hand place it wherever they want. The helpers below own the
+-- common "append to heirline + toggle visibility" case so a lazy-loaded
+-- consumer doesn't have to reimplement the glue. heirline.nvim's runtime API
+-- is required lazily here (pcall-guarded), so this module stays usable by
+-- non-heirline callers of `component()`.
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- Marks the wrapper component so attach() is idempotent across re-fires.
+local STATUSLINE_MARKER = "roon_np"
+
+---Default the visibility flag to hidden on first touch.
+local function ensure_visibility()
+  if vim.g.roon_statusline_visible == nil then
+    vim.g.roon_statusline_visible = false
+  end
+end
+
+---Append the now-playing component to heirline's live statusline. Idempotent:
+---the wrapper carries a `roon_np` marker (via `static`), so repeated calls
+---never stack duplicates. Appends at the end so existing components keep their
+---ids. The wrapper gates on `vim.g.roon_statusline_visible`, so it renders
+---nothing until shown via toggle().
+---@param opts table|nil  forwarded to component() (e.g. { zone, icons })
+---@return boolean attached  false if heirline isn't available yet
+function M.attach(opts)
+  local ok, heirline = pcall(require, "heirline")
+  if not ok then
+    return false
+  end
+  local sl = heirline.statusline
+  if not sl then
+    return false
+  end
+  for _, child in ipairs(sl) do
+    if child[STATUSLINE_MARKER] then
+      return true -- already attached
+    end
+  end
+  ensure_visibility()
+  local wrapper = {
+    static = { [STATUSLINE_MARKER] = true },
+    condition = function()
+      return vim.g.roon_statusline_visible == true
+    end,
+    M.component(opts),
+  }
+  local idx = #sl + 1
+  sl[idx] = sl:new(wrapper, idx)
+  vim.schedule(function()
+    vim.cmd("redrawstatus")
+  end)
+  return true
+end
+
+---Flip the now-playing component's visibility. Idempotently attaches first so
+---the toggle works even before an explicit attach() (e.g. when wired only to
+---:RoonStatuslineToggle).
+---@return boolean visible  the new visibility state
+function M.toggle()
+  M.attach()
+  vim.g.roon_statusline_visible = not vim.g.roon_statusline_visible
+  vim.cmd("redrawstatus")
+  return vim.g.roon_statusline_visible
+end
+
+---Set visibility explicitly (attaches first).
+---@param visible boolean
+function M.set_visible(visible)
+  M.attach()
+  vim.g.roon_statusline_visible = visible and true or false
+  vim.cmd("redrawstatus")
+end
+
 return M
